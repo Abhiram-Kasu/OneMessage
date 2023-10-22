@@ -1,0 +1,31 @@
+﻿@page "/FriendList"
+@attribute [Authorize]
+<h3>Friends</h3>
+<article>
+    
+    <TypographyList>
+        
+        @foreach (var fs in user.FriendShips)
+        {
+
+            <li>
+                @{
+                    var link = $"/Chat/{fs.ToUser.Id}";
+                }
+                    
+                <ButtonLink href=@link>@fs.ToUser.Name</ButtonLink>
+            </li>
+        }
+    </TypographyList>
+</article>
+
+@code {
+
+    [CascadingParameter]
+    public MainLayout? Layout { get; set; }
+
+    private User? user => Layout.User;
+
+   
+
+}

@@ -1,0 +1,16 @@
+﻿@inherits SparkComponent
+
+<a @attributes="@attributes" class="@activeClasses px-3 py-1 rounded inline-flex items-center text-sm font-medium transition-colors hover:text-primary @classes">
+	@ChildContent
+</a>
+
+@code {
+	[Parameter]
+	public bool IsActive { get; set; } = false;
+	private string activeClasses = "";
+
+	protected override void OnInitialized()
+	{
+		activeClasses = IsActive ? "text-primary" : "text-muted-foreground";
+	}
+}

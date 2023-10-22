@@ -1,0 +1,88 @@
+﻿@page "/Chat/{ToUserId:int}"
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Navigation
+@inject DatabaseContext _context
+@implements IAsyncDisposable
+<TypographyLarge>
+    Chat    
+</TypographyLarge>
+
+<article>
+    
+<div class="row">
+<div class="col-12">
+    <div class="card">
+        <div class="card-body">
+            <p>Connected: @numConnected</p>
+            <p>@ToUser.Name : @_messageTo</p>
+            <input type="text" class="rounded w-full" @bind="_messageFrom"  @oninput="async x => await OnTextChange(x)"  />
+        </div>
+    </div>
+</div>
+</div>
+</article>
+
+@code {
+
+    [Parameter]
+    public int ToUserId { get; set; }
+
+    private User ToUser;
+    
+    [CascadingParameter]
+    public MainLayout? Layout { get; set; }
+
+    private User? user => Layout.User;
+
+    private string? _messageFrom;
+
+    private string? _messageTo;
+    private int numConnected = 0;
+
+    private HubConnection _hubConnection;
+
+    private bool _navigatedTo = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        
+        await base.OnParametersSetAsync();
+        if (_navigatedTo) return;
+        ToUser = await _context.Users.FirstAsync(x => x.Id == ToUserId);
+        _hubConnection = new HubConnectionBuilder().WithUrl(Navigation.ToAbsoluteUri("/chathub")).Build();
+
+        
+        _hubConnection.On<string>("RecieveMessage", RecieveMessage);
+        _hubConnection.On<int>("UpdateNumSubscribers", UpdateNumSubscribers);
+        await _hubConnection.StartAsync();
+        await _hubConnection.SendAsync("SubscribeToUser", $"{Math.Max(user.Id, ToUserId)}:{Math.Min(user.Id, ToUserId)}");
+        _navigatedTo = false;
+
+
+    }
+    
+    private void UpdateNumSubscribers(int num)
+    {
+        numConnected = num;
+        InvokeAsync(StateHasChanged);
+
+    }
+    private void RecieveMessage(string message)
+    {
+        _messageTo = message;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public async Task OnTextChange(ChangeEventArgs e)
+    {
+        _messageFrom = e.Value.ToString();
+        await _hubConnection.SendAsync("SendMessage", $"{Math.Max(user.Id, ToUserId)}:{Math.Min(user.Id, ToUserId)}", e.Value.ToString());
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _hubConnection.SendAsync("UnsubscribeFromUser", $"{Math.Max(user.Id, ToUserId)}:{Math.Min(user.Id, ToUserId)}");
+        await _hubConnection.DisposeAsync();
+    }
+
+}
